@@ -3,17 +3,11 @@ package net.openplexus
 import akka.actor._
 import akka.cluster.ClusterEvent._
 import akka.cluster.{Member, MemberStatus, Cluster}
-import akka.cluster.ClusterEvent.MemberJoined
-import akka.cluster.ClusterEvent.CurrentClusterState
-import akka.cluster.ClusterEvent.MemberUp
-import akka.cluster.ClusterEvent.MemberUnreachable
 
 object ClusterSeedMain {
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]) {
 
-    // Override the configuration of the port
-    // when specified as program argument
     if (args.nonEmpty) System.setProperty("akka.remote.netty.port", args(0))
 
     // Create an Akka system
@@ -49,6 +43,7 @@ object ChatMain {
 
 
 case object RegisterClient
+case object UnregisterClient
 
 case class PrintMessage(msg: String)
 
@@ -68,11 +63,23 @@ class ChatClient extends Actor {
 
   def receive = {
     case state: CurrentClusterState =>
-      state.members.filter(_.status == MemberStatus.Up) foreach register
+      state.members.filter(_.status == MemberStatus.Up) foreach(m => {
+        println("Sending register message to " + m.address)
+        register(m)
+      })
+    case state: MemberJoined =>
+      println("Sending register message to " + state.member.address)
+      register(state.member)
+    case state: MemberLeft =>
+      println("Sending unregister message to " + state.member.address)
+      unregister(state.member)
     case RegisterClient if !clients.contains(sender) =>
       println("Added client: " + sender)
       context watch sender
       clients = clients :+ sender
+    case UnregisterClient if clients.contains(sender) =>
+      println("Removed client: " + sender)
+      context unwatch sender
     case Terminated(actor) =>
       clients = clients.filterNot(_ == actor)
     case PrintMessage(msg) =>
@@ -89,5 +96,9 @@ class ChatClient extends Actor {
     println("Registering: " + RootActorPath(member.address) / "user" / "chatclient")
 
     context.actorFor(RootActorPath(member.address) / "user" / "chatclient") ! RegisterClient
+  }
+
+  def unregister(member: Member){
+    println("Registering: " + RootActorPath(member.address) / "user" / "chatclient")
   }
 }
