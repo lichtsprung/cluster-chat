@@ -17,7 +17,7 @@ object ClusterSeedMain {
     if (args.nonEmpty) System.setProperty("akka.remote.netty.port", args(0))
 
     // Create an Akka system
-    val system = ActorSystem("ClusterSystem")
+    val system = ActorSystem("cluster")
     val clusterListener = system.actorOf(Props(new Actor with ActorLogging {
       def receive = {
         case state: CurrentClusterState ⇒
@@ -42,6 +42,7 @@ object ChatMain {
   def main(args: Array[String]) {
     val system = ActorSystem("Chat Client")
     val client = system.actorOf(Props[ChatClient], "chatclient")
+    Cluster(system).join(Address("akka", "ClusterSystem", "fluxx", 2551))
     client ! PushMessage("Ping")
   }
 }
