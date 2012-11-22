@@ -77,7 +77,10 @@ class ChatClient extends Actor {
     case PrintMessage(msg) =>
       println(msg)
     case PushMessage(msg) =>
-      clients.foreach(a => a ! PrintMessage(msg))
+      clients.foreach(a => {
+        println("Pushing message to " + a)
+        a ! PrintMessage(msg)
+      })
       self ! PrintMessage(msg)
   }
 
